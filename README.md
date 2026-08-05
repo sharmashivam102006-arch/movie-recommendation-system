@@ -12,11 +12,9 @@
 
 ## 🌟 Demo & Screenshots
 
-### 🎯 AI Recommendations & Movie Details
-![MovieVerse Recommendations](./assets/demo_recommendations.png)
+### 🔍 Real-Time Movie Search & TMDB Metadata (Spider-Man Search Results)
+![MovieVerse Spider-Man Search](./assets/demo_spiderman_search.png)
 
-### 🕒 Recently Viewed & Interactive Watchlist
-![MovieVerse Recently Viewed](./assets/demo_recently_viewed.png)
 
 ---
 
@@ -130,8 +128,7 @@ streamlit run app.py --server.port 8501
 ```
 movie-recommendation-system/
 ├── assets/                  # Screenshot & demo media assets
-│   ├── demo_recommendations.png
-│   └── demo_recently_viewed.png
+│   └── demo_spiderman_search.png
 ├── app.py                   # Streamlit Frontend Web App
 ├── main.py                  # FastAPI Backend API Server
 ├── df.pkl                   # Processed movies DataFrame pickle
