@@ -1,4 +1,5 @@
 import os
+import time
 import random
 import urllib.parse
 import requests
@@ -301,13 +302,18 @@ def toggle_watchlist(movie: dict):
 # ==============================================================================
 @st.cache_data(ttl=600, show_spinner=False)
 def api_get_json(path: str, params: dict | None = None):
-    try:
-        r = requests.get(f"{API_BASE}{path}", params=params, timeout=20)
-        if r.status_code >= 400:
-            return None, f"HTTP {r.status_code}: {r.text[:250]}"
-        return r.json(), None
-    except Exception as e:
-        return None, f"Connection issue: {e}"
+    last_err = "Unknown error"
+    for attempt in range(4):
+        try:
+            r = requests.get(f"{API_BASE}{path}", params=params, timeout=12)
+            if r.status_code < 400:
+                return r.json(), None
+            last_err = f"HTTP {r.status_code}: {r.text[:250]}"
+        except Exception as e:
+            last_err = f"Connection issue: {e}"
+            if attempt < 3:
+                time.sleep(1.5)
+    return None, last_err
 
 
 # ==============================================================================
@@ -484,7 +490,9 @@ def view_home():
             filtered_data = [m for m in data if (m.get("vote_average") or 0.0) >= min_rating]
             render_poster_grid(filtered_data, cols=6, key_prefix="home_grid")
         else:
-            st.info("Loading movie feed...")
+            st.info("⚡ Initializing AI Recommendation Engine & TMDB Feed...")
+            if st.button("🔄 Refresh Feed"):
+                st.rerun()
 
 
 def view_details():
