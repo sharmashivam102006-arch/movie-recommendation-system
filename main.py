@@ -18,14 +18,12 @@ from dotenv import load_dotenv
 # ENV
 # =========================
 load_dotenv()
-TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+TMDB_API_KEY = os.getenv("TMDB_API_KEY", "").strip()
+if TMDB_API_KEY in ["your_actual_tmdb_api_key_here", "your_tmdb_api_key_here", "xxxx", ""]:
+    TMDB_API_KEY = None
 
 TMDB_BASE = "https://api.themoviedb.org/3"
 TMDB_IMG_500 = "https://image.tmdb.org/t/p/w500"
-
-if not TMDB_API_KEY:
-    # Don't crash import-time in production if you prefer; but for you better fail early:
-    raise RuntimeError("TMDB_API_KEY missing. Put it in .env as TMDB_API_KEY=xxxx")
 
 
 # =========================
@@ -108,6 +106,8 @@ def _norm_title(t: str) -> str:
 def make_img_url(path: Optional[str]) -> Optional[str]:
     if not path:
         return None
+    if str(path).startswith("http://") or str(path).startswith("https://"):
+        return str(path)
     return f"{TMDB_IMG_500}{path}"
 
 
@@ -210,31 +210,33 @@ SEARCH_BUNDLE_CACHE: Dict[str, Any] = {}
 
 async def tmdb_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Safe TMDB GET with fallback to local df dataset on network/API errors.
+    Safe TMDB GET with fallback to local df dataset on network/API errors or missing API key.
     Uses async httpx connection pool for instant keep-alive requests.
     """
     global HTTP_CLIENT
     q = dict(params)
-    q["api_key"] = TMDB_API_KEY
 
-    if HTTP_CLIENT is not None:
+    if TMDB_API_KEY:
+        q["api_key"] = TMDB_API_KEY
+
+        if HTTP_CLIENT is not None:
+            try:
+                r = await HTTP_CLIENT.get(f"{TMDB_BASE}{path}", params=q)
+                if r.status_code == 200:
+                    return r.json()
+            except Exception:
+                pass
+
         try:
-            r = await HTTP_CLIENT.get(f"{TMDB_BASE}{path}", params=q)
+            def _fetch():
+                return requests.get(f"{TMDB_BASE}{path}", params=q, timeout=6)
+            r = await asyncio.to_thread(_fetch)
             if r.status_code == 200:
                 return r.json()
         except Exception:
-            pass
+            pass  # Fallback to local dataset on network block or timeout
 
-    try:
-        def _fetch():
-            return requests.get(f"{TMDB_BASE}{path}", params=q, timeout=6)
-        r = await asyncio.to_thread(_fetch)
-        if r.status_code == 200:
-            return r.json()
-    except Exception:
-        pass  # Fallback to local dataset on network block or timeout
-
-    # Local fallback dispatch
+    # Local fallback dispatch when API key missing or requests fail
     if "/search/movie" in path:
         query = params.get("query", "")
         return {"results": _search_local_movies(query)}
@@ -249,7 +251,7 @@ async def tmdb_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
     elif "/discover/movie" in path:
         return {"results": _get_local_top_movies()}
 
-    return {"results": []}
+    return {"results": _get_local_top_movies()}
 
 
 async def tmdb_cards_from_results(
