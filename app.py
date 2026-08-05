@@ -299,7 +299,7 @@ def toggle_watchlist(movie: dict):
 # ==============================================================================
 # API HELPERS
 # ==============================================================================
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=600, show_spinner=False)
 def api_get_json(path: str, params: dict | None = None):
     try:
         r = requests.get(f"{API_BASE}{path}", params=params, timeout=20)
@@ -576,23 +576,66 @@ def view_details():
     st.markdown(f"## 🤖 AI Recommended Movies for *'{title}'*")
 
     bundle, err_b = api_get_json("/movie/search", {"query": title, "tfidf_top_n": 12})
+    cards = []
     if bundle:
         tfidf_items = bundle.get("tfidf_recommendations", [])
-        cards = []
         for x in tfidf_items or []:
             tmdb = x.get("tmdb") or {}
-            if tmdb.get("tmdb_id"):
+            rec_title = tmdb.get("title") or x.get("title") or "Untitled"
+            rec_id = tmdb.get("tmdb_id") or (abs(hash(rec_title)) % 1000000 + 100000)
+            cards.append({
+                "tmdb_id": rec_id,
+                "title": rec_title,
+                "poster_url": tmdb.get("poster_url"),
+                "vote_average": tmdb.get("vote_average"),
+                "release_date": tmdb.get("release_date"),
+                "match_percentage": x.get("match_percentage") or 80,
+            })
+        
+        if not cards:
+            genre_recs = bundle.get("genre_recommendations", [])
+            for g in genre_recs or []:
                 cards.append({
-                    "tmdb_id": tmdb["tmdb_id"],
-                    "title": tmdb.get("title") or x.get("title") or "Untitled",
-                    "poster_url": tmdb.get("poster_url"),
-                    "vote_average": tmdb.get("vote_average"),
-                    "release_date": tmdb.get("release_date"),
-                    "match_percentage": x.get("match_percentage"),
+                    "tmdb_id": g.get("tmdb_id") or (abs(hash(g.get("title", ""))) % 1000000 + 100000),
+                    "title": g.get("title") or "Untitled",
+                    "poster_url": g.get("poster_url"),
+                    "vote_average": g.get("vote_average"),
+                    "release_date": g.get("release_date"),
+                    "match_percentage": 85,
                 })
+
+    if not cards:
+        # Fallback to genre discovery directly
+        genre_cards, _ = api_get_json("/recommend/genre", {"tmdb_id": tmdb_id, "limit": 12})
+        if genre_cards:
+            for g in genre_cards:
+                cards.append({
+                    "tmdb_id": g.get("tmdb_id") or (abs(hash(g.get("title", ""))) % 1000000 + 100000),
+                    "title": g.get("title") or "Untitled",
+                    "poster_url": g.get("poster_url"),
+                    "vote_average": g.get("vote_average"),
+                    "release_date": g.get("release_date"),
+                    "match_percentage": 82,
+                })
+
+    if not cards:
+        # Fallback to popular home feed
+        home_cards, _ = api_get_json("/home", {"category": "popular", "limit": 12})
+        if home_cards:
+            for h in home_cards:
+                cards.append({
+                    "tmdb_id": h.get("tmdb_id"),
+                    "title": h.get("title") or "Untitled",
+                    "poster_url": h.get("poster_url"),
+                    "vote_average": h.get("vote_average"),
+                    "release_date": h.get("release_date"),
+                    "match_percentage": 78,
+                })
+
+    if cards:
         render_poster_grid(cards, cols=6, key_prefix="rec_grid")
     else:
-        st.info("Loading recommendations...")
+        st.info("No recommendations available at the moment.")
 
     # Recently Viewed Section
     if len(st.session_state.recently_viewed) > 1:
