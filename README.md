@@ -136,6 +136,9 @@ movie-recommendation-system/
 ├── indices.pkl              # Title-to-Index mapping dictionary
 ├── tfidf.pkl                # Trained TF-IDF Vectorizer model
 ├── tfidf_matrix.pkl         # Matrix of movie feature vectors
+├── Procfile                 # Render service command configuration
+├── render.yaml               # Render Blueprint one-click setup
+├── start.sh                  # Startup script launching FastAPI & Streamlit
 ├── requirements.txt         # Python dependencies
 ├── .env.example             # Environment variables template
 ├── .gitignore               # Ignored files (.env, .venv, etc.)
@@ -143,6 +146,29 @@ movie-recommendation-system/
 ```
 
 ---
+
+## 🌐 Deploying to Render
+
+You can easily deploy **MovieVerse** on [Render](https://render.com) for free:
+
+### Quick Blueprint Deployment (Recommended)
+1. Push this repository to **GitHub**.
+2. Log in to [Render Dashboard](https://dashboard.render.com/) and click **New +** -> **Blueprint**.
+3. Connect your `movie-recommendation-system` repository.
+4. Render will automatically detect `render.yaml` and set up the Web Service.
+5. In the Render Environment Variables tab, set your `TMDB_API_KEY`:
+   - `TMDB_API_KEY`: `your_actual_tmdb_api_key`
+6. Click **Apply**. Render will build and deploy your live app!
+
+### Manual Render Web Service Setup
+- **Environment**: `Python 3`
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `chmod +x start.sh && ./start.sh`
+- **Environment Variables**:
+  - `TMDB_API_KEY` = `your_tmdb_api_key_here`
+
+---
+
 
 ## 🤝 Contributing
 
