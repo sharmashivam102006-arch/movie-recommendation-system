@@ -533,7 +533,7 @@ def view_details():
     with left:
         poster_url = data.get("poster_url")
         if poster_url:
-            st.image(poster_url, width="stretch")
+            st.image(poster_url, use_container_width=True)
         else:
             st.markdown(
                 f"<div class='fallback-poster' style='height: 400px; border-radius:16px;'>"
